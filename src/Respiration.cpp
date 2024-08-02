@@ -57,7 +57,7 @@ Respiration::Respiration(uint8_t pin, unsigned long rate) :
   flowRateMetro(flowRateMetroTimer),
   _temperature(25),
   _adcValue(13000),
-  _state(0),
+  _exhale(0),
   _amplitude(0.3),
   _amplitudeChange(0),
   _amplitudeDelta(0),
@@ -125,17 +125,17 @@ void Respiration::sample() {
   _adcValue = ADS.getValue();
   _temperature = thermistor.readTemp(_adcValue);
 
-  state(_temperature);
+  peakOrTrough(_temperature);
   amplitude(_temperature);
   rpm();
   flowRate(_temperature);
 }
 
-void Respiration::state(float value){ // base temperature signal processing and peak detection
+void Respiration::peakOrTrough(float value){ // base temperature signal processing and peak detection
   value >> smoother >> normalizer >> scaler; //smooth, normalize and scale base temperature signal
   scaler >> peak; // detect max peak (exhale)
-  scaler >> trough; // detect min peak (inhale)
-  _state = peak ? 1 : trough ? 0 : _state; // store state (0 = inhale / 1 = exhale)
+  scaler >> trough; // detect min trough (inhale)
+  _exhale = peak ? 1 : trough ? 0 : _exhale; // store true if exhaling (0 = inhale / 1 = exhale)
 }
 
 void Respiration::amplitude(float value){ // amplitude data processing
@@ -159,9 +159,9 @@ void Respiration::amplitude(float value){ // amplitude data processing
   //AMPLITUDE CHANGE
    _amplitudeChange = normalizerAmplitude >> smootherAmplitudeChange >> scalerAmplitudeChange; // smooth and scale normalized amplitude
   
-  //AMPLITUDE DELTA
+  //AMPLITUDE DELTA (temperature amplitude difference between breath cycles)
     if (peak) { // on every exhale peak
-        _amplitudeDelta = _amplitude - pAmplitude; // calculate the difference with previous amplitude *RAW OR NORMALIZED AMPLITUDE?
+        _amplitudeDelta = _amplitude - pAmplitude; // calculate the difference with previous temperature amplitude 
         pAmplitude = _amplitude; // store amplitude of latest breath cycle
     } 
 }
@@ -233,18 +233,18 @@ float Respiration::getScaled(){
   return scaler;
 } 
 
-//returns breath state (two states : 0 is inhale, 1 is exhale)
-uint8_t Respiration::getState() const{ 
-  return _state;
+//returns true if exhaling 
+bool Respiration::isExhaling() const{ 
+  return _exhale;
 }
 
-//returns breah amplitude (raw) (difference between ADC at breath cycle peak and trough)
-float Respiration::getAmplitude() const{ 
+//returns breah amplitude (temperature difference between breath cycle peak and trough)
+float Respiration::getTemperatureAmplitude() const{ 
   return _amplitude;
 }
 
  //returns normalized breath amplitude (target mean 0, stdDev 1) (example: -2 is abnormally low, +2 is abnormally high)
-float Respiration::getAmplitudeNormalized(){ 
+float Respiration::getNormalizedAmplitude(){ 
   return normalizerAmplitude;
 }
 
@@ -253,8 +253,8 @@ float Respiration::getAmplitudeChange() const{
   return _amplitudeChange;
 }
 
-//returns breath amplitude delta (difference between amplitude of current and previous breath cycle)
-float Respiration::getAmplitudeDelta() const{ 
+//returns breath amplitude delta (difference between temperature amplitude of current and previous breath cycle)
+float Respiration::getTemperatureAmplitudeDelta() const{ 
   return _amplitudeDelta;
 }
 
@@ -274,7 +274,7 @@ float Respiration::getRpm() const{
 }
 
 //returns normalized respiration rate (target mean 0, stdDev 1) (example: -2 is abnormally low, +2 is abnormally high)
-float Respiration::getRpmNormalized(){ 
+float Respiration::getNormalizedRpm(){ 
   return normalizerRpm;
 }
 
