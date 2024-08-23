@@ -31,6 +31,7 @@
 #include "TemperatureSH.h"
 #include <Wire.h>  
 #include <numeric>
+#include "ExternalADC.h"
 
 #include "PlaquetteLib.h" //https://sofapirate.github.io/Plaquette/index.html
 
@@ -49,6 +50,9 @@ typedef enum {
 class Respiration {
   // Analog pin the Respiration sensor is connected to.
   uint8_t _pin;
+
+ //ADS1115 object if using external ADC
+  ADS1115 ADS;
 
   //SHthermistor object to calculate temperature from ADC value
   SHthermistor thermistor;

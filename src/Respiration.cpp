@@ -30,6 +30,7 @@
 
 Respiration::Respiration(uint8_t pin, unsigned long rate, ADC_RESOLUTION resolution) :
   _pin(pin),
+  ADS(pin), 
   thermistor(resolution),                  // thermistor
   normalizer(normalizerMean, normalizerStdDev, normalizerTimeWindow), 
   amplitudeNormalizer(normalizerMean, normalizerStdDev, amplitudeNormalizerTimeWindow),
@@ -112,6 +113,10 @@ void Respiration::reset() {
   Wire.begin();
   Wire.setClock(400000);   
 
+  ADS.begin();                  // external ADC
+  ADS.setMode(0);               // continuous mode
+  ADS.readADC(_pin);            // first reading 
+
   //set peak detector thresholds
   minMaxScaledPeak.reloadThreshold(minMaxScaledPeakReloadThreshold);
   minMaxScaledPeak.fallbackTolerance(minMaxScaledPeakFallbackThreshold);
@@ -146,7 +151,8 @@ void Respiration::sample() {
   if(_getExternalADCValue){
     _adcValue = _getExternalADCValue();
   } else {
-    _adcValue = analogRead(_pin);
+     _adcValue = ADS.getValue();
+    // _adcValue = analogRead(_pin);
   }
 
   if(_adcValue >= 0){
